@@ -1,0 +1,428 @@
+####Group 5 R-Code####
+
+
+########IMPORTING THE DATA########
+
+df <- read.csv("https://raw.githubusercontent.com/Mohamed-AlAmeri9/HousePrices/master/HousePrices.csv")
+
+
+#######EXPLORATORY ANALYSIS########
+View(df)
+head(df)  
+tail(df) 
+summary(df)
+hist(df$SalePrice, prob=TRUE)
+summary(df$SalePrice)
+
+########Cleaning the Data#######
+Remove <- c("Street","Alley","Heating","BsmtFinSF2","CentralAir","MiscFeature","Fence","Electrical","GarageCond","PoolArea","PoolQC","MiscVal","LandSlope","LandContour","RoofMatl","LowQualFinSF","FireplaceQu")
+df1 = df[,!(names(df) %in% Remove)]
+summary(df1)
+View(df1)
+df2 <- na.omit(df1)
+summary(df2)
+View(df2)
+
+
+Caroline 
+#Extra cleaning steps: 
+df4<-subset(df3,SalePrice<400000)
+#removed homes with sales price greater than 400,000 to remove outliers. 
+#df4 has 1070 observations, 64 variables. 
+df5<-subset(df4, LotArea<100000)
+#removed lot area greater than 100,000 to remove single outlier
+df6<-subset(df5, GrLivArea<4000)
+#removed living area greater than 4000 to remove two outliers 
+
+#Regression
+M10<-lm(SalePrice~GrLivArea+YearRemodAdd+Fireplaces+KitchenQual+Neighborhood, df6)
+summary(M10)
+plot(df6$SalePrice~df6$GrLivArea, col=factor(df6$Fireplaces))
+library(tseries)
+jarque.bera.test(M10$residuals)
+#Regression validation 
+Training<-subset(df6, df6$MoSold!='3')
+Testing<-subset(df6, df6$MoSold=='3')
+#created dummy variable for the month of March 
+M11<-lm(SalePrice~GrLivArea+YearRemodAdd+Fireplaces+KitchenQual+Neighborhood, Training)
+summary(M11)
+predictions<-predict(M11, Testing)
+View(predictions)
+RMSE=sqrt(sum((predictions-Testing$SalePrice)^2)/(length(Testing$SalePrice)-3))
+#RMSE = 29,352.38
+
+#Classification model 
+df6$BsmtQualDummy <- ifelse(df6$BsmtQual  == "TA",1,0)
+df6$BsmtQualDummy <- factor(df6$BsmtQual)
+#created dummy variable for BsmtQual 
+set.seed(1234)
+inTrain1 <- createDataPartition(y=df6$BsmtQualDummy, p=.70, list = FALSE)
+Training1<-df6[inTrain1,] #partitions training set
+Testing1<-df6[-inTrain1,] #partitions testing set
+summary(Training1)
+Remove <- c("BsmtQual")
+Testing1 = Testing1[,!(names(Testing1) %in% Remove)]
+Training1 = Training1[,!(names(Training1) %in% Remove)]
+colnames(Training1)
+train_control <- trainControl(method="cv", number=10, savePredictions = TRUE)
+M_CART1 <- train(BsmtQualDummy ~SalePrice+YearBuilt+BsmtExposure, data = Training1, trControl=train_control, tuneLength=10, method = "rpart")
+plot(M_CART1) 
+M_CART1$bestTune 
+confusionMatrix(predict(M_CART1, Testing1), Testing1$BsmtQualDummy)
+
+
+
+
+
+#CJ’s chunk
+
+projdf <- read.csv("https://raw.githubusercontent.com/Mohamed-AlAmeri9/HousePrices/master/HousePrices.csv", header=T)
+View(projdf)
+summary(projdf)
+projdf1<-subset(projdf, LotFrontage <=1000)
+dim(projdf1)
+summary(projdf1)
+Remove <- c("Street","Alley","Heating","BsmtFinSF2","CentralAir","MiscFeature","Fence","Electrical","GarageCond","PoolArea","PoolQC","MiscVal","LandSlope","LandContour","RoofMatl","LowQualFinSF","FireplaceQu")
+
+
+projdf2 = projdf1[,!(names(projdf1) %in% Remove)]
+View(projdf2)
+str(projdf2)
+
+m1<-lm(SalePrice ~ MSSubClass+LotFrontage+LotArea+BsmtFinSF1+BsmtUnfSF+TotalBsmtSF+X1stFlrSF+X2ndFlrSF+GrLivArea+BsmtFullBath+BsmtHalfBath+FullBath+HalfBath+KitchenAbvGr+TotRmsAbvGrd+GarageArea+WoodDeckSF+OpenPorchSF, projdf2)
+summary(m1)
+m2<-lm(SalePrice ~ MSSubClass+LotFrontage+LotArea+BsmtFinSF1+BsmtUnfSF+X1stFlrSF+X2ndFlrSF+BsmtFullBath+FullBath+HalfBath+KitchenAbvGr+TotRmsAbvGrd+GarageArea+WoodDeckSF, projdf2)
+summary(m2)
+library(lmtest)
+m3<-lm(SalePrice ~ MSSubClass+LotFrontage+LotArea+BsmtFinSF1+X1stFlrSF+X2ndFlrSF+BsmtFullBath+FullBath+HalfBath+KitchenAbvGr+TotRmsAbvGrd+GarageArea+WoodDeckSF+Neighborhood, projdf2)
+summary(m3)
+m4<-lm(SalePrice ~ MSSubClass+LotFrontage+LotArea+BsmtFinSF1+X1stFlrSF+X2ndFlrSF+BsmtFullBath+FullBath+HalfBath+KitchenAbvGr+TotRmsAbvGrd+GarageArea+WoodDeckSF+Neighborhood, projdf2)
+summary(m4)
+
+plot(m4$residuals)
+hist(m4$residuals, prob = TRUE)
+
+##builds a logistic regression model treating the rank variable 
+##as a numerical variable (it is actually categorical)
+M1.1<- glm(SalePrice ~ MSSubClass+LotFrontage+LotArea+BsmtFinSF1+BsmtUnfSF+X1stFlrSF+X2ndFlrSF+BsmtFullBath+FullBath+HalfBath+KitchenAbvGr+TotRmsAbvGrd+GarageArea+WoodDeckSF, data = projdf2)
+summary(M1.1)
+
+#computes the predicted signals, s=B0+B1x1+B2x2+...+Bkxk
+signal<-predict(M1.1, projdf2)
+
+#runs the signal through the logistic transformation
+pred_prob<-(1/(1+exp(-signal)))
+View(pred_prob)
+
+#We can get the same results with the argument type="response"
+View(predict(M1.1, projdf2, type="response"))
+
+##df$admit <- factor(df$admit) #transforms admit into a factor (categorical) variable
+#transforms rank into a new factor (categorical) variable called catrank
+projdf2$SalePrice <- factor(projdf2$rank) 
+head(projdf2) #summarize dataframe with new variable
+class(projdf2$SalePrice) #checks variable class to confirm change
+
+##Tanya##
+#Regression#
+df <- read.csv("https://raw.githubusercontent.com/Mohamed-AlAmeri9/HousePrices/master/HousePrices.csv")
+Remove <- c("Street","Alley","Heating","BsmtFinSF2","CentralAir","MiscFeature","Fence","Electrical","GarageCond","PoolArea","PoolQC","MiscVal","LandSlope","LandContour","RoofMatl","LowQualFinSF","FireplaceQu")
+df1 = df[,!(names(df) %in% Remove)]
+summary(df1)
+View(df1)
+df2 <- na.omit(df1)
+summary(df2)
+View(df2)
+tdf3<-subset(df2, LotFrontage <=1000)
+dim(tdf3)
+summary(tdf3)
+View(tdf3)
+tM4<-lm(SalePrice~LotFrontage+Neighborhood+LotConfig+YearBuilt+BsmtQual+FullBath+BedroomAbvGr+KitchenAbvGr+TotRmsAbvGrd+Fireplaces+GarageCars+MoSold, tdf3)
+summary(tM4)
+confint(tM4)
+library(tseries) 
+jarque.bera.test(tM4$residuals)
+
+##Regression Task##
+tTraining<-subset(tdf3, tdf3$MoSold!='12') #generates training data
+tTesting<-subset(tdf3, tdf3$MoSold=='12') #generates testing data
+dim(tTraining)
+dim(tTesting)
+View(tTesting)
+tM5<-lm(SalePrice~LotFrontage+Neighborhood+LotConfig+YearBuilt+BsmtQual+FullBath+BedroomAbvGr+KitchenAbvGr+TotRmsAbvGrd+Fireplaces+GarageCars+MoSold, tTraining)
+summary(tM5)
+tpredictions<-predict(tM5, tTesting)
+View(tpredictions) # view predictions for December
+RMSE=sqrt(sum((tpredictions-tTesting$SalePrice)^2)/(length(tTesting$SalePrice)))
+RMSE
+
+###CLASSIFICATION TASK###
+library(caret) 
+library(rpart) 
+summary(tdf3$LotConfig)
+tdf3$InsideDummy <- ifelse(tdf3$LotConfig  == "Inside",1,0)
+tdf3$InsideDummy <- factor(tdf3$InsideDummy)
+set.seed(1234)
+tinTrain1 <- createDataPartition(y=tdf3$InsideDummy, p=.70, list = FALSE)
+tTraining1<-tdf3[inTrain1,] #partitions training set
+tTesting1<-tdf3[-inTrain1,] #partitions testing set
+summary(tTraining1)
+Remove <- c("LotConfig")
+tTesting1 = tTesting1[,!(names(tTesting1) %in% Remove)]
+tTraining1 = tTraining1[,!(names(tTraining1) %in% Remove)]
+colnames(tTraining1)
+ttrain_control <- trainControl(method="cv", number=10, savePredictions = TRUE)
+tM_CART3 <- train(InsideDummy ~SalePrice+LotFrontage+Neighborhood+YearBuilt+TotRmsAbvGrd+GarageCars, data = Training1, trControl=ttrain_control, tuneLength=10, method = "rpart")
+tM_CART3$bestTune
+plot(tM_CART3)
+confusionMatrix(predict(tM_CART3, tTesting1), tTesting1$InsideDummy)
+
+
+Mohamed 
+#Cleaning
+NZV<-nearZeroVar(df, saveMetrics=TRUE)
+df1<-df[,!NZV$nzv]
+index <-NULL
+for (i in 1:length(df1) )
+{
+  if (sum(as.numeric(is.na(df1[,i])))/length(df1)>.5)
+  {
+    index[i]<-TRUE
+  }
+  else
+  {
+    index[i]<-FALSE
+  }
+}
+
+df0<-df1[,!index]
+View(df0)
+
+summary(df0)
+
+df2 <- na.omit(df0)
+
+#Regression
+inTrain <- createDataPartition(y=df2$SalePrice, p=.70, list = FALSE)
+Training<-df2[inTrain,] #partitions training set
+Testing<-df2[-inTrain,] #partitions testing set
+
+M3<-lm(log(SalePrice)~log(GrLivArea)+OverallQual+KitchenQual+Neighborhood+YearBuilt+log(LotArea)+BedroomAbvGr+SaleCondition+MasVnrArea, Training)
+summary(M3)
+predictions1<-exp(predict(M3, Testing))
+
+#Classification:CART
+df2$Fam1Dummy <- ifelse(df2$BldgType  == "1Fam",1,0)
+df2$Fam1Dummy <- factor(df2$Fam1Dummy)
+set.seed(1234)
+inTrain1 <- createDataPartition(y=df2$Fam1Dummy, p=.70, list = FALSE)
+Training1<-df2[inTrain1,] #partitions training set
+Testing1<-df2[-inTrain1,] #partitions testing set
+train_control <- trainControl(method="cv", number=10, savePredictions = TRUE)
+M_CART3 <- train(Fam1Dummy ~MSSubClass, data = Training1, trControl=train_control, tuneLength=10, method = "rpart")
+M_CART3$bestTun
+plot(M_CART3)
+confusionMatrix(predict(M_CART3, Testing1), Testing1$Fam1Dummy)
+
+
+Daniel 
+
+#Cleaning#
+my_data1<-subset(my_data, LotFrontage<=1000)
+dim(my_data1)
+View(my_data1)
+(dim(my_data)[1]-dim(my_data1)[1])/dim(my_data)[1]
+my_data2 <- na.omit(my_data1)
+
+#Regression#
+M5<-lm(SalePrice~OverallQual+OverallCond+Neighborhood+LotArea+Foundation+TotRmsAbvGrd+GarageType+GarageArea+MoSold+YrSold+YearRemodAdd+RoofStyle+Exterior1st, my_data2)
+summary(M5)
+confint(M5)
+plot(M5$residuals)
+hist(M5$residuals)
+library(tseries)
+jarque.bera.test(M5$residuals)
+
+#Regression Validation#
+Training<-subset(my_data2, my_data2$MoSold!='1') #generates training data
+Testing<-subset(my_data2, my_data2$MoSold=='1')
+#CHECK DIMENSIONS OF DATA PARTITION
+dim(Training)
+dim(Testing)
+View(Testing)
+#RE-BUILD MODEL M5 WITH ONLY THE TRAINING DATA PARTITION
+M7<-lm(SalePrice~OverallQual+OverallCond+Neighborhood+LotArea+Foundation+TotRmsAbvGrd+GarageType+GarageArea+MoSold+YrSold+YearRemodAdd+RoofStyle+Exterior1st, Training)
+summary(M7)
+#EVALUATE M7 ON THE TEST PARTITION TO COMPUTE THE OUT-OF-SAMPLE PREDICTIONS#
+predictions<-predict(M7, Testing)
+View(predictions) # view predictions for January
+RMSE=sqrt(sum((predictions-Testing$SalePrice)^2)/(length(Testing$SalePrice)))
+RMSE
+
+#Classification Model#
+#### CART ####
+# PARTITION DATA
+inTrain1 <- createDataPartition(y=my_data2$StyleDummy, p=.70, list = FALSE)
+set.seed(1234)
+Training1<-my_data2[inTrain1,] #partitions training set
+Testing1<-my_data2[-inTrain1,] #partitions testing set
+View(Training1)
+
+##CART MODEL1##
+M_CART1 <- train(StyleDummy ~SalePrice+YearBuilt+BldgType+BedroomAbvGr+TotRmsAbvGrd, data = Training1, trControl=train_control, tuneLength=10, method = "rpart")
+plot(M_CART1) #produces plot of cross-validation results
+M_CART1$bestTune #returns optimal complexity parameter
+confusionMatrix(predict(M_CART1, Testing1), Testing1$StyleDummy)
+
+##Classification Validation##
+my_data2$StyleDummy <- ifelse(my_data2$HouseStyle  == "2Story",1,0)
+my_data2$StyleDummy <- factor(my_data2$StyleDummy)
+inTrain1 <- createDataPartition(y=my_data2$StyleDummy, p=.70, list = FALSE)
+Training1<-my_data2[inTrain1,] #partitions training set
+Testing1<-my_data2[-inTrain1,] #partitions testing set
+M_CART2 <- train(StyleDummy ~SalePrice+YearBuilt+BldgType+BedroomAbvGr+TotRmsAbvGrd, data = Training1, trControl=train_control, tuneLength=10, method = "rpart")
+plot(M_CART2) #produces plot of cross-validation results
+M_CART2$bestTune #returns optimal complexity parameter
+confusionMatrix(predict(M_CART2, Testing1), Testing1$StyleDummy)
+
+
+
+
+
+
+
+
+
+
+
+
+
+Averi 
+##Cleaning
+View(adf2)
+adf3 <- na.omit(adf2)
+
+##Regression 
+
+View(adf3)
+summary(adf3)
+hist(adf3$SalePrice,prob=TRUE)
+curve(dnorm(x, mean = mean(adf3$SalePrice), sd = sd(adf3$SalePrice)), col = "darkblue", lwd = 2, add = TRUE)
+plot(density(adf3$SalePrice)) 
+plot(adf3$SalePrice, type='l') 
+plot(adf3$LotArea~adf3$SalePrice) 
+aM1<-lm(SalePrice~LotFrontage+LotArea+LotShape+LotConfig+Neighborhood+Condition1+Condition2+BldgType+HouseStyle+OverallQual+OverallCond+YearBuilt+YearRemodAdd+Exterior1st+Exterior2nd+MasVnrType+ExterQual+ExterCond+Foundation+BsmtQual+BsmtExposure+BsmtFinType1+BsmtFinSF1+BsmtFinType2+BsmtUnfSF+TotalBsmtSF+HeatingQC+X1stFlrSF+X2ndFlrSF+GrLivArea+BsmtFullBath+BsmtHalfBath+FullBath+HalfBath+BedroomAbvGr+KitchenAbvGr+KitchenQual+TotRmsAbvGrd+Functional+Fireplaces+GarageType+GarageYrBlt+GarageFinish+GarageCars+GarageArea+GarageQual+WoodDeckSF+OpenPorchSF+EnclosedPorch+X3SsnPorch+ScreenPorch+MoSold+YrSold+SaleType+SaleCondition+SalePrice, adf3)
+summary(aM1)
+#multiple r-squared:0.8608
+#adjusted r-squared:0.8393
+aM2<-lm(SalePrice~Neighborhood+Exterior1st+MasVnrType+ExterCond+Foundation+TotalBsmtSF+BsmtFullBath+BsmtHalfBath+HalfBath+BedroomAbvGr+Functional+GarageType+GarageYrBlt+OpenPorchSF+EnclosedPorch+MoSold+YrSold+SaleType+SaleCondition, adf3)
+summary(aM2)
+#Multiple r-squared: 0.7455
+#adjusted r-squared: 0.7254
+aM3<-lm(SalePrice~Neighborhood+Exterior1st+MasVnrType+Foundation+BsmtHalfBath+Functional+OpenPorchSF+EnclosedPorch+MoSold+YrSold+SaleType+SaleCondition, adf3)
+summary(aM3)
+#mult: 0.6395
+#adj: 0.0.616
+aM4<-lm(SalePrice~Neighborhood+OverallCond+YearRemodAdd+BsmtCond+GrLivArea,adf3)
+summary(aM4)
+#mult:0.7619
+#adj:0.7552
+
+#going to use aM4  
+confint(aM4)
+plot(aM4)
+abline(aM4$coefficients[1], aM4$coefficients[2], col='blue', lwd=2)
+plot(aM4$fitted.values~adf3$SalePrice)
+abline(aM4$coefficients[1], aM4$coefficients[2], col='blue', lwd=2)
+plot(aM4$residuals)
+abline(0,0,col='black')
+hist(aM4$residuals)
+summary(aM4$residuals)
+library(tseries)
+jarque.bera.test(aM4$residuals)
+
+
+#Training/Testing Partion
+
+Traininga<-subset(adf3, adf3$YrSold!="2008")
+Testinga<-subset(adf3, adf3$YrSold=="2008")
+dim(Traininga)
+dim(Testinga)
+View(Testinga)
+
+aM5<-lm(SalePrice~Neighborhood+OverallCond+YearRemodAdd+BsmtCond+GrLivArea+YrSold, Traininga)
+summary(aM5)
+predictions1a<-predict(aM5, Testinga)
+predictions2a<-predict(aM5,Traininga)
+View(predictions1a)
+View(predictions2a)
+summary(predictions1a)
+summary(predictions2a)
+
+RMSE=sqrt(sum((predictions1a-Testinga$SalePrice)^2)/(length(Testinga$SalePrice)-3))
+RMSE
+
+##Housing Project-Classification
+
+Traininga<-subset(adf3, adf3$YrSold!="2008")
+Testinga<-subset(adf3, adf3$YrSold=="2008")
+dim(Traininga)
+dim(Testinga)
+View(Testinga)
+
+aM5<-lm(SalePrice~Neighborhood+OverallCond+YearRemodAdd+BsmtCond+GrLivArea+YrSold, Traininga)
+summary(M5a)
+predictions<-predict(M5a, Testinga)
+View(predictions1a)
+summary(predictions1a)
+
+library(dplyr)
+library(ggplot2)
+library(MLmetrics)
+library(caret)
+library(e1071)
+library(randomForest)
+library(rpart)
+library(glmnet)
+library(tidyr)
+library(corrplot)
+#####################
+#       CART        #
+#####################
+
+summary(adf3$BsmtFullBath)
+##(need rank to be factor)
+adf3$BFBDummy <- ifelse(adf3$BsmtFullBath == "1Fam",1,0)
+adf3$BFBDummy <- factor(adf3$BsmtFullBath)
+
+
+set.seed(1234)
+inTrain1a <- createDataPartition(y=adf3$BFBDummy, p=.70, list = FALSE)
+Training1a<-adf3[inTrain1a,] #partitions training set
+Testing1a<-adf3[-inTrain1a,] #partitions testing set
+summary(Training1a)
+Remove <- c("BsmtFullBath")
+
+Testing1a = Testing1a[,!(names(Testing1a) %in% Remove)]
+Training1a = Training1a[,!(names(Training1a) %in% Remove)]
+colnames(Training1a)
+train_control <- trainControl(method="cv", number=10, savePredictions = TRUE)
+
+##CART MODEL1
+M_CART1a <- train(BFBDummy ~SalePrice+HalfBath+TotalBsmtSF+KitchenAbvGr, data = Training1a, trControl=train_control, tuneLength=10, method = "rpart") #increasing tunelength increases regularization penalty
+#the "cv", number = 10 refers to 10-fold cross validation on the training data
+plot(M_CART1a) #produces plot of cross-validation results
+M_CART1a$bestTune #returns optimal complexity parameter
+
+confusionMatrix(predict(M_CART1a, Testing1a), Testing1a$BFBDummy)
+
+##CART MODEL2
+M_CART2a <- train(BFBDummy ~SalePrice+BsmtQual+TotalBsmtSF+BsmtHalfBath+BsmtFinSF1, data = Training1a, trControl=train_control, tuneLength=10, method = "rpart")
+M_CART2a$bestTun
+plot(M_CART2a)
+confusionMatrix(predict(M_CART2a,Testing1a),Testing1$BFBDummy)
+
+
+
+
+
