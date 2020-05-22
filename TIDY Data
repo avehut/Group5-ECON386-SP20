@@ -1,0 +1,22 @@
+########IMPORTING THE DATA########
+
+df <- read.csv("https://raw.githubusercontent.com/Mohamed-AlAmeri9/HousePrices/master/HousePrices.csv")
+
+
+#######EXPLORATORY ANALYSIS########
+View(df)
+head(df)  
+tail(df) 
+summary(df)
+hist(df$SalePrice, prob=TRUE)
+summary(df$SalePrice)
+
+########Cleaning the Data#######
+Remove <- c("Street","Alley","Heating","BsmtFinSF2","CentralAir","MiscFeature","Fence","Electrical","GarageCond","PoolArea","PoolQC","MiscVal","LandSlope","LandContour","RoofMatl","LowQualFinSF","FireplaceQu")
+df1 = df[,!(names(df) %in% Remove)]
+summary(df1)
+View(df1)
+df2 <- na.omit(df1)
+summary(df2)
+View(df2)
+
